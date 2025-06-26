@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #FF4655 0%, #FF4655 50%, #1a1a1a 50%, #1a1a1a 100%);
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #FF4655;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center">
+<!-- Giriş Container -->
+<div class="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-8 border border-gray-800">
+    <!-- Logo ve Başlık -->
+    <div class="text-center mb-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Valorant_logo_-_pink_color_version.svg/1280px-Valorant_logo_-_pink_color_version.svg.png" alt="Valorant Logo" class="w-24 mx-auto mb-4">
+        <p class="text-gray-400">Sign in with your Riot account to continue</p>
+    </div>
+
+    <!-- Giriş Butonu -->
+    <button
+            id="loginButton"
+            class="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105"
+    >
+        <span id="buttonText">Login with Riot Games</span>
+        <div id="buttonLoader" class="loader mx-auto hidden"></div>
+    </button>
+    
+    <div id="errorMessage" class="mt-4 bg-red-500/20 border border-red-500 text-red-400 p-3 rounded-lg text-sm hidden">
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        <span id="errorText">Waiting for action.</span>
+    </div>
+    
+    <div class="mt-6 text-gray-400 text-sm text-center">
+        <p>This application is not endorsed by Riot Games. It is only intended for data display using the client API.</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginButton = document.getElementById('loginButton');
+            const buttonText = document.getElementById('buttonText');
+            const buttonLoader = document.getElementById('buttonLoader');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+
+            // Giriş butonunu ayarla
+            loginButton.addEventListener('click', () => {
+                // Buton durumunu güncelle
+                buttonText.classList.add('hidden');
+                buttonLoader.classList.remove('hidden');
+
+                // Login işlemini başlat
+                window.electron.startRiotLogin();
+
+                showMessage('Opening window...', 'info');
+            });
+
+            window.electron.onLoginSuccess(async (tokens) => {
+                showMessage('Login success, redirecting..', 'success');
+                await window.electron.saveTokens(tokens);
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            });
+
+            function showMessage(message, type) {
+                errorText.textContent = message;
+                errorMessage.classList.remove('hidden');
+
+                if (type === 'error') {
+                    errorMessage.className = 'mt-4 bg-red-500/20 border border-red-500 text-red-400 p-3 rounded-lg text-sm';
+                } else if (type === 'success') {
+                    errorMessage.className = 'mt-4 bg-green-500/20 border border-green-500 text-green-400 p-3 rounded-lg text-sm';
+                } else {
+                    errorMessage.className = 'mt-4 bg-blue-500/20 border border-blue-500 text-blue-400 p-3 rounded-lg text-sm';
+                }
+
+                if (type === 'error') {
+                    buttonText.classList.remove('hidden');
+                    buttonLoader.classList.add('hidden');
+                }
+            }
+        });
+    </script>
+</div>
+</body>
+</html>

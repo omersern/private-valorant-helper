@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant İstemcisi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.22.1/sweetalert2.css" integrity="sha512-aZNBVcDIrRR7lLUG3UsYBKkl9C0hJHhrXiPdUookOGZQB4h9g2dB48O+BfWjRPWZcVShQW76xtCwgGrliVu5sg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* Valorant estetiği için özel ayarlar */
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+        h1, h2, h3, h4, .valorant-font {
+            font-family: 'Anton', sans-serif; /* Valorant'ın Tungsten fontuna benziyor */
+            text-transform: uppercase;
+        }
+        /* Özel Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18232f;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4A5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FD4556;
+        }
+
+        #pregame {
+            position: relative;
+        }
+
+        #pregame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://media.valorant-api.com/maps/d960549e-485c-e861-8d71-aa9d1aed12a2/splash.png');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.3;
+            z-index: -1;
+        }
+        /* Sağ tık menüsü için temel stil */
+        #context-menu {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+    </style>
+
+    <script>
+        // Tailwind CSS için özel renkleri ve ayarları tanımlıyoruz
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'valorant-dark': '#0F1923',
+                        'valorant-dark-2': '#18232f',
+                        'valorant-red': '#FD4556',
+                        'valorant-light': '#ECE8E1',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-valorant-dark text-valorant-light">
+
+<div class="flex h-screen overflow-hidden">
+
+    <div class="flex-1 flex flex-col">
+        <header class="bg-valorant-dark-2 border-b border-gray-700 shadow-lg z-10">
+            <nav class="flex items-center justify-start px-8">
+                <div class="valorant-font text-valorant-red text-2xl mr-10">PRIVATE VALORANT CLIENT</div>
+                <a onClick='navigate("home")' id="home-header" class="header-link cursor-pointer px-5 py-4 border-b-2 border-valorant-red text-sm font-semibold text-white">HOME</a>
+                <a onClick='navigate("store")' id="store-header" class="header-link cursor-pointer px-5 py-4 text-sm font-semibold text-gray-400 hover:text-white transition-colors duration-200">STORE</a>
+                <a onClick='navigate("about")' id="about-header" class="header-link px-5 py-4 text-sm font-semibold text-gray-400 cursor-pointer hover:text-white transition-colors duration-200">ABOUT</a>
+            </nav>
+        </header>
+
+        <main class="flex-1 overflow-y-auto ">
+
+            <div id="pregame"  style="display: none" class="page-content relative flex flex-col p-4 justify-between h-full">
+                <div>
+                    <h1 class="text-6xl text-white valorant-font map-name mb-4" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">...</h1>
+                </div>
+
+                <div class="flex flex-col items-center gap-6 w-full">
+                    <div class="w-full max-w-4xl">
+                        <div id="ally-team-container" class="flex justify-center gap-4">
+                        </div>
+                    </div>
+
+                    <div class="w-full max-w-4xl">
+                        <div id="enemy-team-container" class="flex justify-center gap-4">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full justify-center items-center flex mt-5">
+                    <button onClick="$('#agent-select-modal-container').show();" style="display: none" class="agent-select-btn bg-gray-500 text-white valorant-font text-2xl py-3 px-16 rounded-md hover:bg-red-700 transition-colors flex items-center gap-3">
+                        SELECT AGENT
+                    </button>
+                    <button class="ml-4 quitPregameBtn bg-red-500 text-white valorant-font text-2xl py-3 px-16 rounded-md hover:bg-gray-400 transition-colors flex items-center gap-3">
+                        QUIT
+                    </button>
+                </div>
+            </div>
+
+            <div id="agent-select-modal-container" style="display: none">
+                <div id="modal-overlay" class="fixed inset-0 bg-black/70 z-40"></div>
+                <div class="fixed inset-0 z-50 flex items-center justify-center">
+                    <div class="bg-valorant-dark-2 p-8 rounded-lg shadow-2xl w-full max-w-5xl relative">
+                        <button onClick="$('#agent-select-modal-container').hide()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                        <div id="agent-grid-modal" class="grid grid-cols-12 gap-4 justify-center max-w-4xl mx-auto">
+                        </div>
+                        <div class="flex justify-center mt-6">
+                            <button id="lock-agent" class="valorant-font bg-orange-600 text-white text-3xl py-3 px-12 rounded-md transition-colors duration-300">
+                                 LOCK AGENT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="home" class="page-content p-4">
+                <div class="flex justify-between">
+                    <h1 class="text-4xl text-white mb-6 valorant-font">LATEST</h1>
+                    <button class="autoAgentSelectBtn bg-gray-500 text-white valorant-font text-2xl py-3 px-16 rounded-md hover:bg-red-700 transition-colors flex items-center gap-3">
+                        SELECT AUTO-LOCK AGENT
+                    </button>
+                </div>
+
+                <div id="auto-select-agent-modal-container" style="display: none">
+                    <div class="fixed inset-0 bg-black/70 z-40"></div>
+                    <div class="fixed inset-0 z-50 flex items-center justify-center">
+                        <div class="bg-valorant-dark-2 p-8 rounded-lg shadow-2xl w-full max-w-5xl relative">
+                            <button onClick="$('#auto-select-agent-modal-container').hide()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                            <div id="auto-select-agent" class="grid grid-cols-12 gap-4 justify-center max-w-4xl mx-auto">
+                            </div>
+
+                            <div class="w-full justify-center items-center flex mt-5">
+                                <button class="ml-4 autoSelectDisarmBtn bg-red-500 text-white valorant-font text-2xl py-3 px-16 rounded-md hover:bg-gray-400 transition-colors flex items-center gap-3">
+                                    DISARM
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="matchs" class="page-content hidden">
+            </div>
+
+            <div id="about" class="page-content p-4 hidden">
+                <h1 class="text-4xl text-white mb-6 valorant-font">ABOUT</h1>
+                <p>
+
+                </p>
+            </div>
+
+
+            <section id="store" class="page-content hidden p-4">
+                <div class="relative w-full h-[350px] rounded-lg shadow-2xl overflow-hidden">
+
+                    <div id="featured-bundle-track" class="flex h-full transition-transform duration-500 ease-in-out">
+                    </div>
+
+                    <button id="slider-prev-btn" class="hidden absolute top-1/2 left-4 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full hover:bg-black/70 transition-colors z-20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button id="slider-next-btn" class="hidden absolute top-1/2 right-4 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full hover:bg-black/70 transition-colors z-20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+
+                    <div id="slider-dots-container" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-4 mt-4">
+                        <h2 class="valorant-font text-3xl text-white">OFFERS</h2>
+                        <p id="daily-offers-timer" class="valorant-font text-valorant-red text-lg"></p>
+                    </div>
+
+                    <div id="daily-offers-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="flex-shrink-0 bg-valorant-dark-2 border-t border-gray-700 p-3 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="relative dropdown-container">
+                    <button class="dropdown-toggle bg-valorant-dark hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-md flex items-center">
+                        <span id="current-game"></span>
+                        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="dropdown-menu available-games hidden absolute bottom-full mb-2 w-48 bg-gray-800 rounded-md shadow-lg py-1">
+                    </div>
+                </div>
+            </div>
+            <button class="start-match bg-valorant-red text-white  valorant-font text-2xl py-3 px-16 rounded-md hover:bg-red-700 transition-colors flex items-center gap-3">
+                START
+            </button>
+            <button class="hidden stop-match bg-valorant-dark text-white  valorant-font text-2xl py-3 px-16 rounded-md hover:bg-red-700 transition-colors flex items-center gap-3">
+                IN QUEUE
+            </button>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <div class="block bg-gray-600 w-14 h-8 rounded-full"></div>
+                        <div class="party-status dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition"></div>
+                    </div>
+                    <div class="ml-3 text-white font-medium party-status-text">
+                        Closed
+                    </div>
+                </label>
+            </div>
+        </footer>
+    </div>
+
+    <aside class="w-72 bg-valorant-dark-2 border-l border-gray-700 p-4 flex flex-col h-screen">
+        <div class="flex items-center mb-6">
+            <img src="" class="w-16 h-16 rounded-full avatar">
+            <div class="ml-4">
+                <h2 class="text-lg text-white username"></h2>
+                <div class="flex items-center mt-1">
+                    <span class="text-sm text-gray-300 rank"></span>
+                </div>
+                <div class="flex items-center mt-1" id="statusPlayer">
+                </div>
+            </div>
+        </div>
+        <hr class="border-t border-gray-700 mb-6">
+        <h3 class="text-lg text-white mb-4 valorant-font">Your Party (<span class="partyCount"></span>)</h3>
+        <div class="flex-1 overflow-y-auto pr-2">
+            <ul class="space-y-3 partyMembers">
+            </ul>
+        </div>
+    </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.22.1/sweetalert2.min.js" integrity="sha512-cMwLQB9JnJ/HLZe45MY2OXAzH7kfE4G/xslcOpyqS+iH6IxFk4SkBPeNJPR/ECnCACZg4f88KMllx3AWC5Eipw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+
+    const skinCache = {};
+    const bundleCache = {};
+    let countdownInterval;
+    let activeBundles = [];
+    let currentBundleIndex = 0;
+    let offersSecondsLeft = 0;
+
+    function formatDuration(seconds) {
+        if (seconds <= 0) return "Expired";
+        const days = Math.floor(seconds / 86400);
+        seconds %= 86400;
+        const hours = Math.floor(seconds / 3600);
+        seconds %= 3600;
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        const pad = (n) => n.toString().padStart(2, '0');
+        let timeString = `${pad(hours)}:${pad(minutes)}:${pad(remainingSeconds)}`;
+        if (days > 0) {
+            timeString = `${days}g ${timeString}`;
+        }
+        return timeString;
+    }
+
+    function getDefaultSkinData() {
+        return {
+            displayName: '...',
+            displayIcon: 'https://valorant-api.com/content/valorant/bundles/default/default_skin_icon.png',
+            contentTierUuid: '12683d76-48d7-84a3-4e09-6985794f0445'
+        };
+    }
+
+    async function fetchSkinDetails(itemID) {
+        if (skinCache[itemID]) {
+            return skinCache[itemID];
+        }
+        try {
+            const response = await fetch(`https://valorant-api.com/v1/weapons/skinlevels/${itemID}`);
+            if (!response.ok) {
+                return getDefaultSkinData();
+            }
+            const apiResponse = await response.json();
+            if (apiResponse.status === 200 && apiResponse.data) {
+                const skinData = {
+                    displayName: apiResponse.data.displayName,
+                    displayIcon: apiResponse.data.displayIcon,
+                    contentTierUuid: apiResponse.data.contentTierUuid
+                };
+                skinCache[itemID] = skinData;
+                return skinData;
+            } else {
+                return getDefaultSkinData();
+            }
+        } catch (error) {
+            return getDefaultSkinData();
+        }
+    }
+
+    async function fetchBundleDetails(bundleID) {
+        if (bundleCache[bundleID]) {
+            return bundleCache[bundleID];
+        }
+        try {
+            const response = await fetch(`https://valorant-api.com/v1/bundles/${bundleID}`);
+            if (!response.ok) {
+                return null;
+            }
+            const apiResponse = await response.json();
+            if (apiResponse.status === 200 && apiResponse.data) {
+                const bundleData = {
+                    displayName: apiResponse.data.displayName,
+                    displayIcon: apiResponse.data.displayIcon
+                };
+                bundleCache[bundleID] = bundleData;
+                return bundleData;
+            } else {
+                return null;
+            }
+        } catch(error) {
+            return null;
+        }
+    }
+
+    function getTierInfo(tierUuid) {
+        const tiers = {
+            '0cebb8be-46d7-c12a-d306-e9907bfc5a25': { color: 'text-yellow-400', svg: '<path d="M50 0L61.8 38.2L100 38.2L69.1 61.8L80.9 100L50 76.4L19.1 100L30.9 61.8L0 38.2L38.2 38.2Z"/>' },
+            'e046854e-406c-37f4-6607-19a9ba8426fc': { color: 'text-orange-400', svg: '<path d="M50 0L100 100L0 100Z"/>' },
+            '411e4a55-4e59-7757-41f0-86a53f101bb5': { color: 'text-purple-400', svg: '<path d="M50 0L100 50L50 100L0 50Z"/>' },
+            '12683d76-48d7-84a3-4e09-6985794f0445': { color: 'text-cyan-400', svg: '<rect width="100" height="100"/>' },
+            'f850b2f0-4643-a194-c022-94b59f7df8f7': { color: 'text-blue-400', svg: '<circle cx="50" cy="50" r="50"/>' }
+        };
+        return tiers[tierUuid] || tiers['12683d76-48d7-84a3-4e09-6985794f0445'];
+    }
+
+    function showBundle(index) {
+        const track = document.getElementById('featured-bundle-track');
+        const dots = document.querySelectorAll('.slider-dot');
+        if (!track || dots.length === 0) return;
+
+        track.style.transform = `translateX(-${index * 100}%)`;
+
+        dots.forEach((dot, dotIndex) => {
+            dot.classList.toggle('bg-white', dotIndex === index);
+            dot.classList.toggle('bg-gray-500/50', dotIndex !== index);
+        });
+
+        currentBundleIndex = index;
+    }
+
+    function nextBundle() {
+        const nextIndex = (currentBundleIndex + 1) % activeBundles.length;
+        showBundle(nextIndex);
+    }
+
+    function prevBundle() {
+        const prevIndex = (currentBundleIndex - 1 + activeBundles.length) % activeBundles.length;
+        showBundle(prevIndex);
+    }
+
+    $(".quitPregameBtn").on('click', function(){
+        quitPregame(pregameMatchId);
+    })
+
+    function startCountdowns() {
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        countdownInterval = setInterval(() => {
+            if (activeBundles.length > 0) {
+                let anyBundleActive = false;
+                activeBundles.forEach((bundle, index) => {
+                    if (bundle.DurationRemainingInSeconds > 0) {
+                        bundle.DurationRemainingInSeconds--;
+                        anyBundleActive = true;
+                    }
+                    const timerElement = document.querySelector(`#bundle-timer-${index}`);
+                    if(timerElement) {
+                        timerElement.textContent = formatDuration(bundle.DurationRemainingInSeconds);
+                    }
+                });
+            }
+
+            if (offersSecondsLeft > 0) {
+                offersSecondsLeft--;
+                document.getElementById('daily-offers-timer').textContent = formatDuration(offersSecondsLeft);
+            }
+
+            const totalSecondsRemaining = activeBundles.reduce((acc, b) => acc + b.DurationRemainingInSeconds, 0) + offersSecondsLeft;
+            if (totalSecondsRemaining <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+    }
+
+    async function renderStore(data) {
+        const vpCurrencyID = '85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741';
+
+        if (data.FeaturedBundle && data.FeaturedBundle.Bundles && data.FeaturedBundle.Bundles.length > 0) {
+            activeBundles = data.FeaturedBundle.Bundles;
+            const track = document.getElementById('featured-bundle-track');
+            const dotsContainer = document.getElementById('slider-dots-container');
+            track.innerHTML = '';
+            dotsContainer.innerHTML = '';
+
+            for (let i = 0; i < activeBundles.length; i++) {
+                const bundle = activeBundles[i];
+                const bundleDetails = await fetchBundleDetails(bundle.DataAssetID);
+                const price = bundle.TotalDiscountedCost ? bundle.TotalDiscountedCost[vpCurrencyID] : (bundle.TotalBaseCost ? bundle.TotalBaseCost[vpCurrencyID] : 0);
+
+                const slideHTML = `
+                    <div class="w-full h-full flex-shrink-0 relative">
+                        <img src="${bundleDetails ? bundleDetails.displayIcon : ''}" class="absolute inset-0 w-full h-full object-cover z-0 opacity-80" alt="${bundleDetails ? bundleDetails.displayName : 'Package'}">
+                        <div class="relative z-10 flex flex-col justify-between h-full p-8 bg-gradient-to-r from-black/70 via-black/40 to-transparent">
+                            <div>
+                                <p class="valorant-font text-valorant-red text-lg tracking-wider">FEATURED <span id="bundle-timer-${i}" class="text-white">${formatDuration(bundle.DurationRemainingInSeconds)}</span></p>
+                                <h1 class="valorant-font text-7xl text-white mt-2" style="text-shadow: 2px 2px 10px #000;">${bundleDetails ? bundleDetails.displayName.toUpperCase() : 'PACKAGE'}</h1>
+                            </div>
+                            <div class="self-end">
+                                <button class="bg-valorant-dark-2 border-2 border-cyan-400 text-white font-bold py-3 px-6 rounded-md flex items-center gap-3 hover:bg-cyan-400/20 transition-colors">
+                                    <span class="text-2xl valorant-font">${price.toLocaleString()} VP</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                track.innerHTML += slideHTML;
+
+                const dot = document.createElement('button');
+                dot.className = 'slider-dot w-3 h-3 rounded-full transition-colors';
+                dot.onclick = () => showBundle(i);
+                dotsContainer.appendChild(dot);
+            }
+
+            if (activeBundles.length > 1) {
+                document.getElementById('slider-prev-btn').classList.remove('hidden');
+                document.getElementById('slider-next-btn').classList.remove('hidden');
+            }
+
+            showBundle(0);
+        }
+
+        if (data.SkinsPanelLayout && data.SkinsPanelLayout.SingleItemStoreOffers) {
+            offersSecondsLeft = data.SkinsPanelLayout.SingleItemOffersRemainingDurationInSeconds;
+
+            const offersGrid = document.getElementById('daily-offers-grid');
+            offersGrid.innerHTML = '';
+
+            for (const offer of data.SkinsPanelLayout.SingleItemStoreOffers) {
+                if (!offer.Rewards || offer.Rewards.length === 0) continue;
+                const itemID = offer.Rewards[0].ItemID;
+                const skinDetails = await fetchSkinDetails(itemID);
+                const price = offer.Cost[vpCurrencyID];
+                const tierInfo = getTierInfo(skinDetails.contentTierUuid);
+
+                const cardHTML = `
+                    <div class="group bg-gradient-to-br from-[#1f2d3a] to-[#18232f] rounded-lg border border-gray-700 overflow-hidden cursor-pointer transition-all duration-300 hover:border-valorant-red hover:-translate-y-2 hover:shadow-[0_10px_25px_rgba(253,69,86,0.1)]">
+                        <div class="h-32 flex items-center justify-center p-4">
+                            <img src="${skinDetails.displayIcon}" alt="${skinDetails.displayName}" class="max-w-full max-h-full transition-transform duration-300 drop-shadow-[0_4px_6px_rgba(0,0,0,0.4)] group-hover:scale-110">
+                        </div>
+                        <div class="p-4 bg-black/30">
+                            <p class="text-white truncate valorant-font text-lg">${skinDetails.displayName}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-white font-bold">${price.toLocaleString()} VP</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                offersGrid.innerHTML += cardHTML;
+            }
+        }
+
+        startCountdowns();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('slider-prev-btn').addEventListener('click', prevBundle);
+        document.getElementById('slider-next-btn').addEventListener('click', nextBundle);
+
+        if (typeof jsonData !== 'undefined' && jsonData && Object.keys(jsonData).length > 0) {
+            renderStore(jsonData);
+        }
+    });
+</script>
+
+<script>
+    let profileData;
+    let partyId;
+    let allAgents = {};
+    let findPregameInterval;
+    let pregameMatchId;
+    let selectedAgentId;
+    let updatePregameInterval;
+    let partyUpdateInterval;
+    let playerInfoCache = {};
+    let allMapsCache = null;
+    let rankTiersCache = null;
+
+    function navigate(page){
+        $(".page-content").addClass("hidden");
+        $("#"+page+"").removeClass("hidden");
+        $('.header-link').removeClass('border-b-2 border-valorant-red text-gray-400').addClass('text-gray-400');
+        $('.header-link').not("#"+page+"-header").removeClass('text-white');
+        $("#"+page+"-header").addClass('border-b-2 border-valorant-red text-white').removeClass('text-gray-400');
+    }
+
+    async function loadStorefront(id){
+        const request = await window.electron.apiRequest({
+            endpoint: `/store/v3/storefront/${id}`,
+            method: "POST",
+            body: "{}"
+        })
+        if(request.success){
+            await renderStore(request.data);
+        }else{
+            swal.fire({
+                text: request.error,
+                icon: "error"
+            })
+        }
+    }
+
+    async function loadProfileData(){
+        await loadAgents();
+        const profile = await window.electron.getProfileInfo();
+
+        if(!profile.username){
+            window.location.href="error.html";
+        }else{
+            profileData = profile;
+            await loadStorefront(profileData.sub);
+            await getUsernameById(profileData.sub, true);
+        }
+    }
+
+    async function loadAgents(){
+        try {
+            const response = await fetch("https://valorant-api.com/v1/agents?isPlayableCharacter=true");
+            const data = await response.json();
+            if (data.status == 200) {
+                $("#agent-grid-modal").html("");
+                data.data.forEach(agent => {
+                    allAgents[agent.uuid.toLowerCase()] = agent;
+                    $("#agent-grid-modal").append(`
+                    <div class="agent-portrait cursor-pointer p-1 border-2 border-transparent transition-all" data-uuid="${agent.uuid}" data-agent-name="${agent.displayName}">
+                        <img src="${agent.displayIcon}" alt="${agent.displayName}">
+                    </div>
+                    `)
+                    $("#auto-select-agent").append(`
+                    <div class="agent-portrait-auto cursor-pointer p-1 border-2 border-transparent transition-all" data-uuid="${agent.uuid}" data-agent-name="${agent.displayName}">
+                        <img src="${agent.displayIcon}" alt="${agent.displayName}">
+                    </div>
+                    `)
+
+                });
+
+
+                $(".autoAgentSelectBtn").on('click', async function(){
+                    let uuid = await window.electron.getAgent();
+                    $(".agent-portrait-auto").removeClass("border-2 border-red-500");
+                    $(`#auto-select-agent [data-uuid="${uuid}"]`).addClass('border-2 border-red-500');
+                    $("#auto-select-agent-modal-container").show();
+                })
+                $(".autoSelectDisarmBtn").on('click', async function(){
+                    await window.electron.setAgent("null");
+                    $("#auto-select-agent-modal-container").hide();
+                })
+                $(".agent-portrait").on('click', function(){
+                    let uuid = $(this).attr("data-uuid");
+                    $(".agent-portrait").removeClass("border-2 border-red-500");
+                    $(this).addClass("border-2 border-red-500");
+                    selectAgent(pregameMatchId, uuid);
+                });
+
+                $(".agent-portrait-auto").on('click', function(){
+                    let uuid = $(this).attr("data-uuid");
+                    $(".agent-portrait-auto").removeClass("border-2 border-red-500");
+                    $(this).addClass("border-2 border-red-500");
+                    window.electron.setAgent(uuid);
+                });
+
+                if (!allAgents['add6443a-41bd-e414-f6ad-e58d267f4e95']) {
+                    allAgents['add6443a-41bd-e414-f6ad-e58d267f4e95'] = { displayIcon: 'https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/displayicon.png' };
+                }
+            }
+        } catch (error) {
+            console.error("Ajanlar yüklenemedi:", error);
+        }
+    }
+
+    $("#lock-agent").on('click', function(){
+        lockAgent(pregameMatchId, selectedAgentId);
+    })
+
+    async function ensureAllMapsCached() {
+        if (allMapsCache) {
+            return;
+        }
+
+        try {
+            const response = await fetch('https://valorant-api.com/v1/maps');
+
+            if (!response.ok) {
+                throw new Error(`${response.status}`);
+            }
+
+            const data = await response.json();
+            allMapsCache = data.data;
+
+        } catch (error) {
+            allMapsCache = null;
+            throw error;
+        }
+    }
+
+    async function findMapByUrl(mapUrl) {
+        try {
+            await ensureAllMapsCached();
+
+            const foundMap = allMapsCache.find(map => map.mapUrl === mapUrl);
+
+            if (foundMap) {
+                return { name: foundMap.displayName, splash: foundMap.splash };
+            } else {
+                return { success: false, error: 'Map not found' };
+            }
+
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function getMapInfoById(mapId) {
+        try {
+            await ensureAllMapsCached();
+
+            const foundMap = allMapsCache.find(map => map.uuid === mapId);
+
+            if (foundMap) {
+                return { name: foundMap.displayName, splash: foundMap.splash };
+            } else {
+                return { success: false, error: 'Map not found' };
+            }
+
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function ensureRankTiersCached() {
+        if (rankTiersCache) {
+            return;
+        }
+
+        try {
+            const response = await fetch("https://valorant-api.com/v1/competitivetiers");
+            const data = await response.json();
+
+            if (data.status !== 200) {
+                throw new Error(`${data.status}`);
+            }
+
+            const latestEpisodeTiers = data.data[data.data.length - 1].tiers;
+
+            const tierMap = {};
+            for (const tier of latestEpisodeTiers) {
+                if (tier.tierName) {
+                    tierMap[tier.tier] = tier.tierName;
+                }
+            }
+
+            rankTiersCache = tierMap;
+
+        } catch (error) {
+            rankTiersCache = null;
+            throw error;
+        }
+    }
+
+    async function selectAgent(match_id, uuid) {
+        const request = await window.electron.apiRequest({
+            endpoint: `/pregame/v1/matches/${match_id}/select/${uuid}`,
+            method: "POST"
+        })
+        if(request.success){
+            selectedAgentId = uuid;
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    async function lockAgent(match_id, uuid) {
+        const request = await window.electron.apiRequest({
+            endpoint: `/pregame/v1/matches/${match_id}/lock/${uuid}`,
+            method: "POST"
+        })
+        if(request.success){
+            return true;
+        }else{
+            Swal.fire({
+                text: request.error,
+                icon: "error"
+            })
+        }
+    }
+
+    async function getRank(number) {
+        try {
+            await ensureRankTiersCached();
+            if (!rankTiersCache) {
+                return "Unranked";
+            }
+
+            const rankName = rankTiersCache[number];
+            return rankName ? rankName : "Unranked";
+
+        } catch (error) {
+            return "Unranked";
+        }
+    }
+
+    async function renderPregameScreen(data) {
+        const currentMapName = $('.map-name').text();
+        const mapInfo = await findMapByUrl(data.MapID);
+        if (currentMapName !== mapInfo.name) {
+            $('.map-name').text(mapInfo.name);
+            $('head').find('#dynamic-pregame-style').remove();
+            $('head').append(`<style id="dynamic-pregame-style">#pregame::before { background-image: url('${mapInfo.splash}'); }</style>`);
+        }
+
+        const allyTeamContainer = $('#ally-team-container');
+        const enemyTeamContainer = $('#enemy-team-container');
+        if(data.PregameState == "character_select_finished" || data.PregameState == "provisioned"){
+            $(".agent-select-btn").hide();
+        }else{
+            $(".agent-select-btn").show();
+        }
+        const teamColors = {
+            ally: { border: 'border-cyan-400', bg: 'bg-cyan-900/40' },
+            enemy: { border: 'border-valorant-red', bg: 'bg-red-900/40' }
+        };
+
+        const currentPlayerSubjects = new Set();
+
+        const allPlayers = [
+            ...(data.AllyTeam?.Players || []).map(p => ({ ...p, team: 'ally' })),
+            ...(data.EnemyTeam?.Players || []).map(p => ({ ...p, team: 'enemy' }))
+        ];
+
+        for (const player of allPlayers) {
+            currentPlayerSubjects.add(player.Subject);
+
+            const [username, rankName, agent] = await Promise.all([
+                getUsernameById(player.Subject),
+                getRank(player.CompetitiveTier),
+                Promise.resolve(allAgents[player.CharacterID?.toLowerCase()])
+            ]);
+
+            const container = player.team === 'ally' ? allyTeamContainer : enemyTeamContainer;
+            const colors = player.team === 'ally' ? teamColors.ally : teamColors.enemy;
+
+            let playerCardHTML;
+
+            if (!player.CharacterID || !agent) {
+                playerCardHTML = `
+                <div class="w-28 h-28 p-1 bg-gray-800/50 border-2 border-gray-500 rounded-md flex items-center justify-center">
+                     <p class="text-xs text-center">${player.PregamePlayerState === 'joined' ? 'Ajan Seçiyor' : 'Bağlanıyor'}</p>
+                </div>
+                <div class="w-full bg-black/60 text-center py-1 mt-1 rounded-sm">
+                    <p class="text-white text-sm font-semibold truncate" title="${username.GameName}#${username.TagLine}">${username.GameName}</p>
+                    <p class="text-xs text-gray-400">${rankName}</p>
+                </div>`;
+            } else {
+                playerCardHTML = `
+                <div class="w-28 h-28 p-1 ${colors.bg} border-2 ${colors.border} rounded-md relative">
+                    <img src="${agent.displayIcon}" alt="${agent.displayName}" class="w-full h-full object-cover rounded">
+                     ${player.CharacterSelectionState === 'locked' ? `<div class="absolute bottom-1 right-1 bg-black/70 rounded p-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-lock-fill text-white" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg></div>` : ''}
+                </div>
+                <div class="w-full bg-black/60 text-center py-1 mt-1 rounded-sm">
+                    <p class="text-white text-sm font-semibold truncate" title="${username.GameName}#${username.TagLine}">${username.GameName}</p>
+                    <p class="text-xs text-gray-400">${rankName}</p>
+                </div>`;
+            }
+
+            let $playerCard = $(`#player-${player.Subject}`);
+
+            if ($playerCard.length === 0) {
+                container.append(`
+                <div class="player-card flex flex-col items-center w-32" id="player-${player.Subject}" data-subject="${player.Subject}">
+                    ${playerCardHTML}
+                </div>
+            `);
+            } else {
+                $playerCard.html(playerCardHTML);
+                if ($playerCard.parent().attr('id') !== container.attr('id')) {
+                    $playerCard.appendTo(container);
+                }
+            }
+        }
+
+        $('.player-card').each(function() {
+            const subjectId = $(this).data('subject');
+            if (!currentPlayerSubjects.has(subjectId)) {
+                $(this).remove();
+            }
+        });
+
+        updateEmptySlots(allyTeamContainer, data.AllyTeam?.Players.length || 0);
+        updateEmptySlots(enemyTeamContainer, data.EnemyTeam?.Players.length || 0);
+    }
+    function updateEmptySlots(container, playerCount) {
+        const emptySlotHTML = `
+        <div class="empty-slot flex flex-col items-center opacity-40 w-32">
+            <div class="w-28 h-28 p-1 bg-gray-800/50 border-2 border-gray-500 rounded-md">
+                 <img src="" class="w-full h-full object-cover rounded filter grayscale">
+            </div>
+            <div class="w-full bg-black/60 text-center py-1 mt-1 rounded-sm">
+                <p class="text-gray-400 text-sm font-semibold">...</p>
+            </div>
+        </div>`;
+
+        container.find('.empty-slot').remove();
+
+        const slotsToAdd = 5 - playerCount;
+        for (let i = 0; i < slotsToAdd; i++) {
+            container.append(emptySlotHTML);
+        }
+    }
+
+
+    async function getUsernameById(id, force = false){
+        if (!force && playerInfoCache[id]) {
+            return playerInfoCache[id];
+        }
+
+        const request = await window.electron.apiRequest({
+            endpoint: "/name-service/v2/players",
+            method: "PUT",
+            body: `["${id}"]`
+        });
+
+        if(request.success){
+            let data = JSON.parse(request.data);
+            if (data && data.length > 0) {
+                const playerData = data[0];
+                playerInfoCache[id] = playerData;
+                if(force){
+                    getPartyByPlayer(profileData.sub);
+                    $(".username").html(`${playerData.GameName}#${playerData.TagLine}`);
+                }
+                return playerData;
+            }
+        } else {
+            if(request.error == "Failure validating/decoding RSO Access Token"){
+                window.location.href='login.html';
+            }
+            console.error(`Kullanıcı adı alınamadı: ${id}`);
+            return { GameName: 'Bilinmiyor', TagLine: '????' };
+        }
+    }
+    async function getPartyByPlayer(id){
+        const request = await window.electron.apiRequest({
+            endpoint: "/parties/v1/players/"+id,
+            method: "GET"
+        });
+        if(request.success){
+            let data = JSON.parse(request.data);
+            partyId = data.CurrentPartyID;
+            getPartyById(partyId);
+            partyUpdateInterval = setInterval(async () => {
+                getPartyById(partyId);
+            }, 3000);
+        }else{
+            $("#statusPlayer").html(`<span class="h-2 w-2 bg-red-500 rounded-full mr-2"></span>
+<span class="text-xs text-red-400">Çevrimdışı</span>`)
+        }
+    }
+
+    async function changePartyStatus(party_id, status){
+        const request = await window.electron.apiRequest({
+            endpoint: "/parties/v1/parties/"+party_id+"/accessibility",
+            method: "POST",
+            body: "{\"Accessibility\":\""+status+"\"}"
+        })
+        if(request.success){
+            await getPartyById(party_id);
+        }else{
+            swal.fire({
+                text: request.error,
+                icon: "error"
+            })
+        }
+    }
+
+    function reHandle(){
+        $(".select-game").click(function(){
+            let id = $(this).attr("id");
+            selectGameMode(id, partyId);
+            $(".dropdown-menu").addClass("hidden");
+        })
+    }
+
+    async function getPartyById(id){
+        const request = await electron.apiRequest({
+            endpoint: "/parties/v1/parties/"+id,
+            method: "GET"
+        })
+        if(request.success){
+            let data = JSON.parse(request.data);
+            let accessibility = data.Accessibility;
+            let eligible_queues = data.EligibleQueues;
+            let invite_code = data.InviteCode;
+            let matchmaking_data = data.MatchmakingData;
+            $(".available-games").html("");
+            eligible_queues.forEach((queue) => {
+                $(".available-games").append(`<a id="${queue}" class="select-game block px-4 py-2 text-sm text-gray-200 hover:bg-valorant-red">${queue}</a>`)
+            })
+            if(accessibility == "CLOSED"){
+                $(".party-status").removeClass("right-1");
+                $(".party-status-text").html("Closed");
+            }else{
+                $(".party-status").addClass("right-1");
+                $(".party-status").removeClass("left-1");
+                $(".party-status-text").html("Public")
+            }
+
+            if(data.State == "MATCHMAKING"){
+                $(".start-match").hide();
+                $(".stop-match").show();
+                clearInterval(partyUpdateInterval);
+                await handleMatchFound();
+            }else{
+                if(data.State != "DEFAULT"){
+                    $("footer").hide();
+                }else{
+                    $("footer").show();
+                }
+                $(".start-match").show();
+                $(".stop-match").hide();
+
+                clearInterval(findPregameInterval);
+                clearInterval(updatePregameInterval);
+            }
+            reHandle();
+            $("#current-game").html(matchmaking_data.QueueID);
+            $(".partyCount").html(data.Members.length);
+            $(".partyMembers").html("");
+            const owner = data.Members.filter(member => member.IsOwner === true)[0];
+            const members = data.Members.filter(member => !member.IsOwner);
+
+            for (const member of members) {
+                let username = await getUsernameById(member.PlayerIdentity.Subject);
+                let rank = await getRank(18);
+                $(".partyMembers").append(`
+            <li class="flex items-center p-2 rounded-md hover:bg-gray-700/50 transition-colors cursor-pointer">
+                <img src="https://media.valorant-api.com/playercards/${member.PlayerIdentity.PlayerCardID}/smallart.png" class="w-10 h-10 rounded-full">
+                <div class="ml-3">
+                    <p class="font-semibold text-white">${username.GameName}#${username.TagLine}</p>
+                    <p class="text-xs">${rank}</p>
+                </div>
+            </li>
+            `)
+            }
+            $(".avatar").attr("src", 'https://media.valorant-api.com/playercards/'+owner.PlayerIdentity.PlayerCardID+'/smallart.png');
+        }
+    }
+    function startMatch(partyId){
+        window.electron.apiRequest({
+            endpoint: "/parties/v1/parties/"+partyId+"/matchmaking/join",
+            method: "POST"
+        })
+            .then(response => {
+                if(response.success){
+                    getPartyById(partyId);
+                }else{
+                    Swal.fire({
+                        text: response.error,
+                        icon: 'error'
+                    })
+                }
+            })
+    }
+
+    function stopMatch(partyId){
+        window.electron.apiRequest({
+            endpoint: "/parties/v1/parties/"+partyId+"/matchmaking/leave",
+            method: "POST"
+        })
+            .then(response => {
+                if(response.success){
+                    getPartyById(partyId);
+                }else{
+                    Swal.fire({
+                        text: response.error,
+                        icon: 'error'
+                    })
+                }
+            })
+    }
+
+    $(".stop-match").on('click', async function(){
+        await stopMatch(partyId);
+    })
+    $(".start-match").on('click', async function(){
+        await startMatch(partyId);
+    })
+
+
+
+    document.querySelectorAll('.dropdown-toggle').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const menu = button.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu').forEach(m => {
+                if (m !== menu) m.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+        });
+    });
+
+    async function selectGameMode(queue, party_id){
+        const request = await window.electron.apiRequest({
+            endpoint: "/parties/v1/parties/"+party_id+"/queue",
+            method: "POST",
+            body: "{\"QueueID\":\""+queue+"\"}"
+        })
+
+        if(request.success){
+            getPartyById(party_id);
+        }else{
+            swal.fire({
+                text: request.error,
+                icon: "error"
+            })
+        }
+    }
+
+    $(".party-status").on("click", async function(){
+        if($(".party-status").hasClass("right-1")){
+            await changePartyStatus(partyId, "CLOSED");
+        }else{
+            await changePartyStatus(partyId, "OPEN");
+        }
+    })
+
+    async function handleMatchFound(){
+        clearInterval(partyUpdateInterval);
+        await findPregameMatch(profileData.sub);
+        findPregameInterval = setInterval(async () => {
+            await findPregameMatch(profileData.sub);
+        }, 5000);
+
+
+    }
+
+    async function findPregameMatch(id){
+        const request = await window.electron.apiRequest({
+            endpoint: "/pregame/v1/players/"+id
+        })
+        if(request.success){
+            let data = JSON.parse(request.data);
+            clearInterval(findPregameInterval);
+            updatePregameInterval = setInterval(async () => {
+                await getPregameMatch(data.MatchID);
+            }, 1000);
+            pregameMatchId = data.MatchID
+            $(".page-content").addClass("hidden");
+            $("#pregame").show();
+            $(".start-match").hide();
+            $(".stop-match").hide();
+            return data.MatchID;
+
+        }else{
+
+        }
+    }
+
+    async function quitPregame(id){
+        const request = await window.electron.apiRequest({
+            endpoint: `/pregame/v1/matches/${id}/quit`,
+            method: "POST"
+        })
+        if(request.success){
+
+        }else{
+            swal.fire({
+                text: request.error,
+                icon: "error"
+            })
+        }
+    }
+
+    async function getPregameMatch(id){
+        const request = await window.electron.apiRequest({
+            endpoint: "/pregame/v1/matches/"+id,
+            method: "GET"
+        })
+        if(request.success){
+            let data = JSON.parse(request.data);
+            let agent = await window.electron.getAgent();
+            if(agent != "null"){
+                if(data.PregameState == "character_select_active"){
+                    let uuidAgent = await window.electron.getAgent();
+                    await selectAgent(pregameMatchId, uuidAgent);
+                    await lockAgent(pregameMatchId, uuidAgent)
+                }
+            }
+            await renderPregameScreen(data);
+
+        }else{
+            clearInterval(updatePregameInterval);
+            clearInterval(findPregameInterval);
+            updatePregameInterval = "";
+            findPregameInterval = ""
+            pregameMatchId = "";
+            $('#agent-select-modal-container').hide();
+
+            $(".start-match").show();
+            $(".stop-match").hide();
+            $(".agent-select-btn").hide();
+
+            window.location.reload();
+
+        }
+    }
+
+    async function getContracts(id){
+        const request = await window.electron.apiRequest({
+            endpoint: "/contract-definitions/v2/definitions/story"
+        })
+        if(request.success){
+            console.log(request);
+        }else{
+            console.log(request.error);
+        }
+    }
+
+
+    $(document).ready(async function() {
+        await loadProfileData();
+    });
+
+</script>
+
+</body>
+</html>
